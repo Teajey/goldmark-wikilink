@@ -8,6 +8,8 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
+
+	wikilinkparser "go.abhg.dev/goldmark/wikilink/parser"
 )
 
 func TestParser(t *testing.T) {
@@ -17,92 +19,85 @@ func TestParser(t *testing.T) {
 		desc string
 		give string
 
-		wantTarget   string
-		wantLabel    string
-		wantFragment string
-		wantEmbed    bool
+		wantDestination string
+		wantLabel       string
+		wantEmbed       bool
 
 		remainder string // unconsumed portion of tt.give
 	}{
 		{
-			desc:       "simple",
-			give:       "[[foo]] bar",
-			wantTarget: "foo",
-			wantLabel:  "foo",
-			remainder:  " bar",
+			desc:            "simple",
+			give:            "[[foo]] bar",
+			wantDestination: "foo.html",
+			wantLabel:       "foo",
+			remainder:       " bar",
 		},
 		{
-			desc:       "spaces",
-			give:       "[[foo bar]]baz",
-			wantTarget: "foo bar",
-			wantLabel:  "foo bar",
-			remainder:  "baz",
+			desc:            "spaces",
+			give:            "[[foo bar]]baz",
+			wantDestination: "foo bar.html",
+			wantLabel:       "foo bar",
+			remainder:       "baz",
 		},
 		{
-			desc:       "label",
-			give:       "[[foo|bar]]",
-			wantTarget: "foo",
-			wantLabel:  "bar",
+			desc:            "label",
+			give:            "[[foo|bar]]",
+			wantDestination: "foo.html",
+			wantLabel:       "bar",
 		},
 		{
-			desc:       "label with spaces",
-			give:       "[[foo bar|baz qux]] quux",
-			wantTarget: "foo bar",
-			wantLabel:  "baz qux",
-			remainder:  " quux",
+			desc:            "label with spaces",
+			give:            "[[foo bar|baz qux]] quux",
+			wantDestination: "foo bar.html",
+			wantLabel:       "baz qux",
+			remainder:       " quux",
 		},
 		{
-			desc:         "fragment",
-			give:         "[[foo#bar]] baz",
-			wantTarget:   "foo",
-			wantLabel:    "foo#bar",
-			wantFragment: "bar",
-			remainder:    " baz",
+			desc:            "fragment",
+			give:            "[[foo#bar]] baz",
+			wantDestination: "foo.html#bar",
+			wantLabel:       "foo#bar",
+			remainder:       " baz",
 		},
 		{
-			desc:         "fragment with label",
-			give:         "[[foo#bar|baz]]",
-			wantTarget:   "foo",
-			wantLabel:    "baz",
-			wantFragment: "bar",
+			desc:            "fragment with label",
+			give:            "[[foo#bar|baz]]",
+			wantDestination: "foo.html#bar",
+			wantLabel:       "baz",
 		},
 		{
-			desc:         "fragment without target",
-			give:         "[[#foo]]",
-			wantTarget:   "",
-			wantLabel:    "#foo",
-			wantFragment: "foo",
+			desc:            "fragment without target",
+			give:            "[[#foo]]",
+			wantDestination: "#foo",
+			wantLabel:       "#foo",
 		},
 		{
-			desc:         "fragment without target with label",
-			give:         "[[#foo|bar]]",
-			wantTarget:   "",
-			wantLabel:    "bar",
-			wantFragment: "foo",
+			desc:            "fragment without target with label",
+			give:            "[[#foo|bar]]",
+			wantDestination: "#foo",
+			wantLabel:       "bar",
 		},
 		{
-			desc:       "label with spaces. embedded",
-			give:       "![[foo bar|baz qux]] quux",
-			wantTarget: "foo bar",
-			wantLabel:  "baz qux",
-			remainder:  " quux",
-			wantEmbed:  true,
+			desc:            "label with spaces. embedded",
+			give:            "![[foo bar|baz qux]] quux",
+			wantDestination: "foo bar.html",
+			wantLabel:       "baz qux",
+			remainder:       " quux",
+			wantEmbed:       true,
 		},
 		{
-			desc:         "fragment without target with label. embedded",
-			give:         "![[#foo|bar]]",
-			wantTarget:   "",
-			wantLabel:    "bar",
-			wantFragment: "foo",
-			wantEmbed:    true,
+			desc:            "fragment without target with label. embedded",
+			give:            "![[#foo|bar]]",
+			wantDestination: "#foo",
+			wantLabel:       "bar",
+			wantEmbed:       true,
 		},
 		{
-			desc:         "fragment without target with label. embedded",
-			give:         "![[baz#foo|bar]]",
-			wantTarget:   "baz",
-			wantLabel:    "bar",
-			wantFragment: "foo",
-			wantEmbed:    true,
+			desc:            "fragment without target with label. embedded",
+			give:            "![[baz#foo|bar]]",
+			wantDestination: "baz.html#foo",
+			wantLabel:       "bar",
+			wantEmbed:       true,
 		},
 	}
 
@@ -113,14 +108,21 @@ func TestParser(t *testing.T) {
 
 			r := text.NewReader([]byte(tt.give))
 
-			var p Parser
+			p := Parser{
+				Resolver: wikilinkparser.DefaultResolver,
+			}
 			got := p.Parse(nil /* parent */, r, parser.NewContext())
 			require.NotNil(t, got, "expected Node, got nil")
 
-			if n, ok := got.(*Node); assert.True(t, ok, "expected Node, got %T", got) {
-				assert.Equal(t, tt.wantTarget, string(n.Target), "target mismatch")
-				assert.Equal(t, tt.wantFragment, string(n.Fragment), "fragment mismatch")
-				assert.Equal(t, tt.wantEmbed, n.Embed, "embed mismatch")
+			switch n := got.(type) {
+			case *ast.Link:
+				assert.Equal(t, tt.wantDestination, string(n.Destination), "Destination mismatch")
+				assert.False(t, tt.wantEmbed, "embed mismatch")
+			case *ast.Image:
+				assert.Equal(t, tt.wantDestination, string(n.Destination), "Destination mismatch")
+				assert.True(t, tt.wantEmbed, "embed mismatch")
+			default:
+				assert.Fail(t, "expected *ast.Link, got %T", got)
 			}
 
 			if assert.Equal(t, 1, got.ChildCount(), "children mismatch") {

@@ -9,6 +9,8 @@ import (
 	"github.com/yuin/goldmark"
 	"go.abhg.dev/goldmark/wikilink"
 	"gopkg.in/yaml.v3"
+
+	wikilinkparser "go.abhg.dev/goldmark/wikilink/parser"
 )
 
 func TestIntegration(t *testing.T) {
@@ -25,7 +27,8 @@ func TestIntegration(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal(testsdata, &tests))
 
 	md := goldmark.New(goldmark.WithExtensions(&wikilink.Extender{
-		Resolver: _resolver,
+		Resolver:       _resolver,
+		ParserResolver: _parserResolver,
 	}))
 
 	for _, tt := range tests {
@@ -43,6 +46,8 @@ func TestIntegration(t *testing.T) {
 var (
 	_resolver = resolver{}
 
+	_parserResolver = parserResolver{}
+
 	// Links with this target will return a nil destination.
 	_doesNotExistTarget = []byte("Does Not Exist")
 )
@@ -55,4 +60,14 @@ func (resolver) ResolveWikilink(n *wikilink.Node) ([]byte, error) {
 	}
 
 	return wikilink.DefaultResolver.ResolveWikilink(n)
+}
+
+type parserResolver struct{}
+
+func (parserResolver) ResolveWikilink(target, fragment []byte) ([]byte, error) {
+	if bytes.Equal(target, _doesNotExistTarget) {
+		return nil, nil
+	}
+
+	return wikilinkparser.DefaultResolver.ResolveWikilink(target, fragment)
 }

@@ -108,7 +108,7 @@
   give: |
     Image: ![[hello.png]].
   want: |
-    <p>Image: <img src="hello.png">.</p>
+    <p>Image: <img src="hello.png" alt="hello.png">.</p>
 
 - desc: label/image
   give: |

@@ -2,10 +2,13 @@ package wikilink
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
+
+	wikilinkparser "go.abhg.dev/goldmark/wikilink/parser"
 )
 
 // Parser parses wikilinks.
@@ -18,7 +21,19 @@ import (
 //
 // Note that the priority for the wikilink parser must 199 or lower to take
 // precedence over the plain Markdown link parser which has a priority of 200.
-type Parser struct{}
+type Parser struct {
+	Resolver wikilinkparser.Resolver
+
+	once sync.Once
+}
+
+func (p *Parser) init() {
+	p.once.Do(func() {
+		if p.Resolver == nil {
+			p.Resolver = wikilinkparser.DefaultResolver
+		}
+	})
+}
 
 var _ parser.InlineParser = (*Parser)(nil)
 
@@ -69,23 +84,43 @@ func (p *Parser) Parse(_ ast.Node, block text.Reader, _ parser.Context) ast.Node
 		return nil
 	}
 
-	n := &Node{Target: block.Value(seg), Embed: embed}
-	if idx := bytes.Index(n.Target, _pipe); idx >= 0 {
-		n.Target = n.Target[:idx]                // [[ ... |
+	// n := &Node{Target: block.Value(seg), Embed: embed}
+	target := block.Value(seg)
+	if idx := bytes.Index(target, _pipe); idx >= 0 {
+		target = target[:idx]                    // [[ ... |
 		seg = seg.WithStart(seg.Start + idx + 1) // | ... ]]
 	}
 
-	if len(n.Target) == 0 || seg.Len() == 0 {
+	if len(target) == 0 || seg.Len() == 0 {
 		return nil // target and label must not be empty
 	}
 
-	// Target may be Foo#Bar, so break them apart.
-	if idx := bytes.LastIndex(n.Target, _hash); idx >= 0 {
-		n.Fragment = n.Target[idx+1:] // Foo#Bar => Bar
-		n.Target = n.Target[:idx]     // Foo#Bar => Foo
+	// target may be Foo#Bar, so break them apart.
+	var fragment []byte
+	if idx := bytes.LastIndex(target, _hash); idx >= 0 {
+		fragment = target[idx+1:] // Foo#Bar => Bar
+		target = target[:idx]     // Foo#Bar => Foo
 	}
 
-	n.AppendChild(n, ast.NewTextSegment(seg))
+	dest, err := p.Resolver.ResolveWikilink(target, fragment)
+	if err != nil {
+		return nil
+	}
+
 	block.Advance(stop + 2)
-	return n
+
+	if len(dest) == 0 {
+		return ast.NewTextSegment(seg)
+	}
+
+	link := ast.NewLink()
+	link.Destination = dest
+	if embed {
+		image := ast.NewImage(link)
+		image.AppendChild(image, ast.NewTextSegment(seg))
+		return image
+	} else {
+		link.AppendChild(link, ast.NewTextSegment(seg))
+		return link
+	}
 }

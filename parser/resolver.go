@@ -1,4 +1,4 @@
-package wikilink
+package parser
 
 import (
 	"path/filepath"
@@ -31,25 +31,26 @@ type Resolver interface {
 	// If ResolveWikilink returns a nil destination and error, the
 	// Renderer will omit the link and render its contents as a regular
 	// string.
-	ResolveWikilink(*Node) (destination []byte, err error)
+	ResolveWikilink(target, fragment []byte) ([]byte, error)
 }
 
+var _hash = []byte{'#'}
 var _html = []byte(".html")
 
 type defaultResolver struct{}
 
-func (defaultResolver) ResolveWikilink(n *Node) ([]byte, error) {
-	dest := make([]byte, len(n.Target)+len(_html)+len(_hash)+len(n.Fragment))
+func (defaultResolver) ResolveWikilink(target, fragment []byte) ([]byte, error) {
+	dest := make([]byte, len(target)+len(_html)+len(_hash)+len(fragment))
 	var i int
-	if len(n.Target) > 0 {
-		i += copy(dest, n.Target)
-		if filepath.Ext(string(n.Target)) == "" {
+	if len(target) > 0 {
+		i += copy(dest, target)
+		if filepath.Ext(string(target)) == "" {
 			i += copy(dest[i:], _html)
 		}
 	}
-	if len(n.Fragment) > 0 {
+	if len(fragment) > 0 {
 		i += copy(dest[i:], _hash)
-		i += copy(dest[i:], n.Fragment)
+		i += copy(dest[i:], fragment)
 	}
 	return dest[:i], nil
 }

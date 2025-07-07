@@ -15,7 +15,8 @@ type Extender struct {
 	// Resoler specifies how to resolve destinations for linked pages.
 	//
 	// Uses DefaultResolver if unspecified.
-	Resolver Resolver
+	Resolver       Resolver
+	ParserResolver wikilinkparser.Resolver
 }
     Extender extends a goldmark Markdown object with support for parsing and
     rendering Wikilinks.
@@ -66,7 +67,11 @@ func (n *Node) Dump(src []byte, level int)
 func (n *Node) Kind() ast.NodeKind
     Kind reports the kind of this node.
 
-type Parser struct{}
+type Parser struct {
+	Resolver wikilinkparser.Resolver
+
+	// Has unexported fields.
+}
     Parser parses wikilinks.
 
     Install it on your goldmark Markdown object with Extender, or install it

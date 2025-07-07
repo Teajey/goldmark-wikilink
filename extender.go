@@ -5,6 +5,8 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
+
+	wikilinkparser "go.abhg.dev/goldmark/wikilink/parser"
 )
 
 // Extender extends a goldmark Markdown object with support for parsing and
@@ -13,7 +15,8 @@ type Extender struct {
 	// Resoler specifies how to resolve destinations for linked pages.
 	//
 	// Uses DefaultResolver if unspecified.
-	Resolver Resolver
+	Resolver       Resolver
+	ParserResolver wikilinkparser.Resolver
 }
 
 // Extend extends the provided Markdown object with support for wikilinks.
@@ -22,7 +25,9 @@ func (e *Extender) Extend(md goldmark.Markdown) {
 	// lower than that to ensure that the "[" trigger fires.
 	md.Parser().AddOptions(
 		parser.WithInlineParsers(
-			util.Prioritized(&Parser{}, 199),
+			util.Prioritized(&Parser{
+				Resolver: e.ParserResolver,
+			}, 199),
 		),
 	)
 
