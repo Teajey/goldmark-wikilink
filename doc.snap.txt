@@ -1,0 +1,170 @@
+package wikilink // import "go.abhg.dev/goldmark/wikilink"
+
+Package wikilink provides support for parsing [[...]]-style and ![[...]]-style
+wiki links to the goldmark Markdown parser.
+
+VARIABLES
+
+var Kind = ast.NewNodeKind("WikiLink")
+    Kind is the kind of the wikilink AST node.
+
+
+TYPES
+
+type Extender struct {
+	// Resoler specifies how to resolve destinations for linked pages.
+	//
+	// Uses DefaultResolver if unspecified.
+	Resolver Resolver
+}
+    Extender extends a goldmark Markdown object with support for parsing and
+    rendering Wikilinks.
+
+func (e *Extender) Extend(md goldmark.Markdown)
+    Extend extends the provided Markdown object with support for wikilinks.
+
+type Node struct {
+	ast.BaseInline
+
+	// Page to which this wikilink points.
+	//
+	// This may be blank for links to headers within the same document
+	// like [[#Foo]].
+	Target []byte
+
+	// Fragment portion of the link, if any.
+	//
+	// For links in the form, [[Foo bar#Baz qux]], this is the portion
+	// after the "#".
+	Fragment []byte
+
+	// Whether this link starts with a bang (!).
+	//
+	//	![[foo.png]]
+	//
+	// This indicates that the resource should be embedded (e.g. images).
+	Embed bool
+}
+    Node is a Wikilink AST node. Wikilinks have two components: the target and
+    the label.
+
+    The target is the page to which this link points, and the label is the text
+    that displays for this link.
+
+    For links in the following form, the label and the target are the same.
+
+        [[Foo bar]]
+
+    For links in the following form, the target is the portion of the link to
+    the left of the "|", and the label is the portion to the right.
+
+        [[Foo bar|baz qux]]
+
+func (n *Node) Dump(src []byte, level int)
+    Dump dumps the Node to stdout.
+
+func (n *Node) Kind() ast.NodeKind
+    Kind reports the kind of this node.
+
+type Parser struct{}
+    Parser parses wikilinks.
+
+    Install it on your goldmark Markdown object with Extender, or install it
+    directly on your goldmark Parser by using the WithInlineParsers option.
+
+        wikilinkParser := util.Prioritized(&wikilink.Parser{...}, 199)
+        goldmarkParser.AddOptions(parser.WithInlineParsers(wikilinkParser))
+
+    Note that the priority for the wikilink parser must 199 or lower to take
+    precedence over the plain Markdown link parser which has a priority of 200.
+
+func (p *Parser) Parse(_ ast.Node, block text.Reader, _ parser.Context) ast.Node
+    Parse parses a wikilink in one of the following forms:
+
+        [[...]]    (simple)
+        ![[...]]   (embedded)
+
+    Both, simple and embedded wikilinks support the following syntax:
+
+        [[target]]
+        [[target|label]]
+
+    If the label is omitted, the target is used as the label.
+
+    The target may optionally contain a fragment identifier:
+
+        [[target#fragment]]
+
+func (p *Parser) Trigger() []byte
+    Trigger returns characters that trigger this parser.
+
+type Renderer struct {
+	// Resolver determines destinations for wikilink pages.
+	//
+	// If a Resolver returns an empty destination, the Renderer will skip
+	// the link and render just its contents. That is, instead of,
+	//
+	//   <a href="foo">bar</a>
+	//
+	// The renderer will render just the following.
+	//
+	//   bar
+	//
+	// Defaults to DefaultResolver if unspecified.
+	Resolver Resolver
+
+	// Has unexported fields.
+}
+    Renderer renders wikilinks as HTML.
+
+    Install it on your goldmark Markdown object with Extender, or directly on a
+    goldmark Renderer by using the WithNodeRenderers option.
+
+        wikilinkRenderer := util.Prioritized(&wikilink.Renderer{...}, 199)
+        goldmarkRenderer.AddOptions(renderer.WithNodeRenderers(wikilinkRenderer))
+
+func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer)
+    RegisterFuncs registers wikilink rendering functions with the provided
+    goldmark registerer. This teaches goldmark to call us when it encounters a
+    wikilink in the AST.
+
+func (r *Renderer) Render(w util.BufWriter, src []byte, node ast.Node, entering bool) (ast.WalkStatus, error)
+    Render renders the provided Node. It must be a Wikilink Node.
+
+    goldmark will call this method if this renderer was registered with it using
+    the WithNodeRenderers option.
+
+    All nodes will be rendered as links (with <a> tags), except for embed links
+    (![[..]]) that refer to images. Those will be rendered as images (with <img>
+    tags).
+
+type Resolver interface {
+	// ResolveWikilink returns the address of the page that the provided
+	// wikilink points to. The destination will be URL-escaped before
+	// being placed into a link.
+	//
+	// If ResolveWikilink returns a non-nil error, rendering will be
+	// halted.
+	//
+	// If ResolveWikilink returns a nil destination and error, the
+	// Renderer will omit the link and render its contents as a regular
+	// string.
+	ResolveWikilink(*Node) (destination []byte, err error)
+}
+    Resolver resolves pages referenced by wikilinks to their destinations.
+
+var DefaultResolver Resolver = defaultResolver{}
+    DefaultResolver is a minimal wikilink resolver that resolves wikilinks
+    relative to the source page.
+
+    It adds ".html" to the end of the target if the target does not have an
+    extension.
+
+    For example,
+
+        [[Foo]]      // => "Foo.html"
+        [[Foo bar]]  // => "Foo bar.html"
+        [[foo/Bar]]  // => "foo/Bar.html"
+        [[foo.pdf]]  // => "foo.pdf"
+        [[foo.png]]  // => "foo.png"
+
