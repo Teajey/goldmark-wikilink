@@ -1,3 +1,7 @@
+# Why I'm forking this
+
+I want to replace the provided Node in ast.go with that of goldmark's ast.Link and ast.Image so that it better integrates with my AST Transformer ;^)
+
 # goldmark-wikilink
 
 [![Go Reference](https://pkg.go.dev/badge/go.abhg.dev/goldmark/wikilink.svg)](https://pkg.go.dev/go.abhg.dev/goldmark/wikilink)
