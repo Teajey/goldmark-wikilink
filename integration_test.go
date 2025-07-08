@@ -5,12 +5,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Teajey/goldmark/wikilink"
+	wikilink "github.com/Teajey/goldmark-wikilink"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
 	"gopkg.in/yaml.v3"
 
-	wikilinkparser "github.com/Teajey/goldmark/wikilink/parser"
+	wikilinkparser "github.com/Teajey/goldmark-wikilink/parser"
 )
 
 func TestIntegration(t *testing.T) {

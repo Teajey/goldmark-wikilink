@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"syscall/js"
 
+	"github.com/Teajey/goldmark-wikilink"
 	"github.com/Teajey/goldmark/wikilink"
 	"github.com/yuin/goldmark"
 )

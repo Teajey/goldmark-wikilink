@@ -6,7 +6,7 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 
-	wikilinkparser "github.com/Teajey/goldmark/wikilink/parser"
+	wikilinkparser "github.com/Teajey/goldmark-wikilink/parser"
 )
 
 // Extender extends a goldmark Markdown object with support for parsing and

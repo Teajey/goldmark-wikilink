@@ -8,7 +8,7 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 
-	wikilinkparser "github.com/Teajey/goldmark/wikilink/parser"
+	wikilinkparser "github.com/Teajey/goldmark-wikilink/parser"
 )
 
 // Parser parses wikilinks.
