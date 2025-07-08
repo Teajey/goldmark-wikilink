@@ -1,12 +1,12 @@
-module go.abhg.dev/goldmark/wikilink/demo
+module github.com/Teajey/goldmark-wikilink/demo
 
 go 1.22
 
 toolchain go1.24.4
 
-replace go.abhg.dev/goldmark/wikilink => ../
+replace github.com/Teajey/goldmark-wikilink => ../
 
 require (
 	github.com/yuin/goldmark v1.7.12
-	go.abhg.dev/goldmark/wikilink v0.6.0
+	github.com/Teajey/goldmark-wikilink v0.6.0
 )
