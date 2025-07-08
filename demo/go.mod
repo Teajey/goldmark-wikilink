@@ -7,6 +7,6 @@ toolchain go1.24.4
 replace github.com/Teajey/goldmark-wikilink => ../
 
 require (
-	github.com/yuin/goldmark v1.7.12
 	github.com/Teajey/goldmark-wikilink v0.6.0
+	github.com/yuin/goldmark v1.7.12
 )
