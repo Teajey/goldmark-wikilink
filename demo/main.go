@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"syscall/js"
 
+	"github.com/Teajey/goldmark/wikilink"
 	"github.com/yuin/goldmark"
-	"go.abhg.dev/goldmark/wikilink"
 )
 
 func main() {

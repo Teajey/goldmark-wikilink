@@ -9,7 +9,7 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 
-	wikilinkparser "go.abhg.dev/goldmark/wikilink/parser"
+	wikilinkparser "github.com/Teajey/goldmark/wikilink/parser"
 )
 
 func TestParser(t *testing.T) {
